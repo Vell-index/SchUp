@@ -3,18 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Manajemen Jadwal (Pro + Cloud)</title>
+    <title>Sistem Manajemen Jadwal | SchUp</title>
     
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Global Assignment
-        window.firebaseModules = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, setDoc };
-    </script>
-
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
@@ -55,20 +45,19 @@
                     <i class="fas fa-school text-3xl text-indigo-600 dark:text-indigo-400"></i>
                 </div>
                 <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Smart Schedule</h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Sistem Jadwal Cloud</p>
-                <div id="loading-auth" class="text-xs text-indigo-300 mt-2 font-medium">Menghubungkan ke Database...</div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Sistem Jadwal Database Lokal</p>
             </div>
             
             <form onsubmit="event.preventDefault(); app.processLogin();" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase mb-1">Username</label>
-                    <input type="text" id="login-user" placeholder="admin / guru / siswa" class="w-full pl-4 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" required disabled>
+                    <input type="text" id="login-user" placeholder="admin / guru / siswa" class="w-full pl-4 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" required>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase mb-1">Password</label>
-                    <input type="password" id="login-pass" placeholder="Admin: admin | Guru: 1234" class="w-full pl-4 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" disabled>
+                    <input type="password" id="login-pass" placeholder="Admin: admin | Guru: 1234" class="w-full pl-4 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
                 </div>
-                <button type="submit" id="btn-login" class="w-full py-3 bg-gray-400 text-white font-bold rounded-lg transition shadow-lg flex justify-center items-center gap-2 cursor-not-allowed" disabled>
+                <button type="submit" id="btn-login" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-lg flex justify-center items-center gap-2">
                     Masuk <i class="fas fa-arrow-right text-sm"></i>
                 </button>
             </form>
@@ -253,7 +242,7 @@
              <div class="space-y-3">
                  <div class="grid grid-cols-2 gap-2">
                     <input type="text" id="auto-class" placeholder="Kelas" list="existing-classes" class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white">
-                    <!-- New: Day Selector for Auto Slot -->
+                    <!-- Day Selector for Auto Slot -->
                     <select id="auto-day" class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white">
                         <option value="">Semua Hari Efektif</option>
                         <!-- Populated by JS -->
@@ -284,106 +273,61 @@
                 this.currentClassFilter = 'all';
                 this.searchQuery = '';
                 this.editingId = null;
-                this.db = null;
-                this.auth = null;
-                this.appId = typeof __app_id !== 'undefined' ? __app_id : 'demo-app';
                 this.effectiveDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat']; // Default
                 this.allDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-                this.listenerUnsubscribe = null;
+                this.DB_KEY = 'smart_schedule_local_db';
+                this.SETTINGS_KEY = 'smart_schedule_settings';
             }
 
-            async init() {
-                const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, getFirestore, collection, onSnapshot, onAuthStateChanged, doc } = window.firebaseModules;
-                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' && __firebase_config ? __firebase_config : '{}');
-                
-                try {
-                    const app = initializeApp(firebaseConfig);
-                    this.auth = getAuth(app);
-                    this.db = getFirestore(app);
-                } catch (e) {
-                    console.error("Firebase Init Error:", e);
-                    const loadingEl = document.getElementById('loading-auth');
-                    loadingEl.innerText = "Error: Firebase configuration missing or invalid.";
-                    loadingEl.classList.replace('text-indigo-300', 'text-red-500');
-                    return;
-                }
-
+            init() {
                 this.applyDarkMode();
+                this.loadSettings();
+                this.loadData();
                 
-                const initAuth = async () => {
+                // Cek apakah user sudah login sebelumnya di perangkat ini
+                const savedRole = localStorage.getItem('user_role');
+                const savedName = localStorage.getItem('user_name');
+                
+                if (savedRole && savedName) {
+                    this.setSession(savedRole, savedName, false);
+                }
+                this.startClock();
+            }
+
+            // --- DATABASE LOKAL (LOCALSTORAGE) ---
+            loadData() {
+                const data = localStorage.getItem(this.DB_KEY);
+                if (data) {
                     try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(this.auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(this.auth);
-                        }
-                    } catch (error) { 
-                        console.error("Auth failed:", error); 
-                        const loadingEl = document.getElementById('loading-auth');
-                        if (loadingEl) {
-                            loadingEl.innerText = "Koneksi Gagal: " + error.message + " (Pastikan Firebase Anonymous Auth aktif)";
-                            loadingEl.classList.replace('text-indigo-300', 'text-red-500');
-                        }
+                        this.schedules = JSON.parse(data);
+                        // Migrasi data lama jika ada
+                        this.schedules = this.schedules.map(s => ({...s, className: s.className || 'Umum'}));
+                    } catch (e) {
+                        this.schedules = [];
                     }
-                };
-
-                initAuth();
-
-                onAuthStateChanged(this.auth, (user) => {
-                    if (user) {
-                        const loadingEl = document.getElementById('loading-auth');
-                        if (loadingEl) {
-                            loadingEl.innerText = "Terhubung dengan Database.";
-                            loadingEl.classList.replace('text-red-500', 'text-green-400');
-                        }
-                        this.enableLoginUI();
-                        if (!this.listenerUnsubscribe) {
-                            this.setupRealtimeListener(user.uid);
-                        }
-                        this.setupSettingsListener(); // Load effective days
-                    }
-                });
+                }
+                this.sortSchedules();
+                this.render();
+                this.updateStats();
             }
 
-            enableLoginUI() {
-                document.getElementById('login-user').disabled = false;
-                document.getElementById('login-pass').disabled = false;
-                const btn = document.getElementById('btn-login');
-                btn.disabled = false;
-                btn.classList.remove('cursor-not-allowed', 'bg-gray-400');
-                btn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+            saveData() {
+                localStorage.setItem(this.DB_KEY, JSON.stringify(this.schedules));
+                this.sortSchedules();
+                this.render();
+                this.updateStats();
             }
 
-            setupRealtimeListener(uid) {
-                const { collection, onSnapshot } = window.firebaseModules;
-                const colRef = collection(this.db, 'artifacts', this.appId, 'public', 'data', 'schedules');
-                
-                this.listenerUnsubscribe = onSnapshot(colRef, (snapshot) => {
-                    this.schedules = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    this.schedules = this.schedules.map(s => ({...s, className: s.className || 'Umum'}));
-                    this.sortSchedules();
-                    this.render();
-                    this.updateStats();
-                }, (error) => {
-                    console.error("Error reading schedules:", error);
-                    this.showToast("Gagal memuat data", "error");
-                });
+            loadSettings() {
+                const settings = localStorage.getItem(this.SETTINGS_KEY);
+                if (settings) {
+                    try {
+                        this.effectiveDays = JSON.parse(settings);
+                    } catch (e) {}
+                }
             }
 
-            setupSettingsListener() {
-                const { doc, onSnapshot } = window.firebaseModules;
-                // CORRECTED PATH FOR SETTINGS: 6 Segments (Even number)
-                const docRef = doc(this.db, 'artifacts', this.appId, 'public', 'data', 'settings', 'general');
-                
-                onSnapshot(docRef, (docSnap) => {
-                    if (docSnap.exists() && docSnap.data().effectiveDays) {
-                        this.effectiveDays = docSnap.data().effectiveDays;
-                    }
-                    this.render(); // Re-render tabs based on new settings
-                });
-            }
-
-            async saveSettings() {
+            saveSettings() {
                 const checkboxes = document.querySelectorAll('input[name="effective-day"]:checked');
                 const selectedDays = Array.from(checkboxes).map(cb => cb.value);
                 
@@ -392,18 +336,12 @@
 
                 if (selectedDays.length === 0) return alert("Pilih minimal satu hari efektif!");
 
-                const { doc, setDoc } = window.firebaseModules;
-                try {
-                    // CORRECTED PATH FOR SETTINGS: 6 Segments (Even number)
-                    await setDoc(doc(this.db, 'artifacts', this.appId, 'public', 'data', 'settings', 'general'), {
-                        effectiveDays: selectedDays
-                    }, { merge: true });
-                    this.showToast("Pengaturan Hari Efektif Disimpan!");
-                    this.closeSettingsModal();
-                } catch(e) {
-                    console.error(e);
-                    this.showToast("Gagal menyimpan pengaturan", "error");
-                }
+                this.effectiveDays = selectedDays;
+                localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(this.effectiveDays));
+                
+                this.showToast("Pengaturan Hari Efektif Disimpan!");
+                this.closeSettingsModal();
+                this.render();
             }
 
             // --- LOGIN ---
@@ -417,8 +355,13 @@
                 else alert("Password Salah!");
             }
 
-            setSession(role, name) {
+            setSession(role, name, initFilter = true) {
                 this.currentUserRole = role;
+                
+                // Simpan login ke localstorage
+                localStorage.setItem('user_role', role);
+                localStorage.setItem('user_name', name);
+
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('main-app').classList.remove('hidden');
                 
@@ -433,41 +376,20 @@
                     badge.className = "px-2 bg-blue-600 text-white rounded text-xs";
                     adminControls.classList.add('hidden');
                 }
-                this.filterByDay(this.effectiveDays[0] || 'Senin');
-            }
-
-            // --- CRUD ---
-            async addScheduleData(data) {
-                const { collection, addDoc } = window.firebaseModules;
-                try { await addDoc(collection(this.db, 'artifacts', this.appId, 'public', 'data', 'schedules'), data); } 
-                catch(e) { console.error(e); this.showToast("Error saving", "error"); }
-            }
-
-            async updateScheduleData(id, data) {
-                const { doc, updateDoc } = window.firebaseModules;
-                try { await updateDoc(doc(this.db, 'artifacts', this.appId, 'public', 'data', 'schedules', id), data); } catch(e) {}
-            }
-
-            async deleteScheduleData(id) {
-                const { doc, deleteDoc } = window.firebaseModules;
-                try { 
-                    await deleteDoc(doc(this.db, 'artifacts', this.appId, 'public', 'data', 'schedules', id));
-                    return true;
-                } catch(e) { 
-                    console.error("Delete failed:", e);
-                    this.showToast("Gagal hapus: " + e.message, "error");
-                    return false;
+                
+                if (initFilter) {
+                    this.filterByDay(this.effectiveDays[0] || 'Senin');
                 }
+                this.render(); // Paksa render ulang agar tombol admin muncul/hilang
             }
 
-            async deleteSchedule(id) {
-                if(confirm('Yakin ingin menghapus jadwal ini?')) {
-                    const success = await this.deleteScheduleData(id.toString());
-                    if (success) this.showToast('Berhasil dihapus.', 'info');
-                }
+            logout() { 
+                localStorage.removeItem('user_role');
+                localStorage.removeItem('user_name');
+                location.reload(); 
             }
 
-            // --- LOGIC ---
+            // --- LOGIC JADWAL ---
             saveSchedule() {
                 const className = document.getElementById('input-class-name').value.trim();
                 const day = document.getElementById('input-day').value;
@@ -487,10 +409,32 @@
                     return;
                 }
 
-                const data = { className, day, timeStart, timeEnd, subject, teacher, color: this.getColor(subject) };
-                if (this.editingId) { this.updateScheduleData(this.editingId, data); this.showToast('Diperbarui!'); } 
-                else { this.addScheduleData(data); this.showToast('Ditambahkan!'); }
+                const data = { 
+                    id: this.editingId || Date.now().toString(),
+                    className, day, timeStart, timeEnd, subject, teacher, 
+                    color: this.getColor(subject) 
+                };
+
+                if (this.editingId) { 
+                    const index = this.schedules.findIndex(s => s.id === this.editingId);
+                    if (index !== -1) this.schedules[index] = data;
+                    this.showToast('Diperbarui!'); 
+                } 
+                else { 
+                    this.schedules.push(data);
+                    this.showToast('Ditambahkan!'); 
+                }
+                
+                this.saveData(); // Simpan ke local db
                 this.closeModal();
+            }
+
+            deleteSchedule(id) {
+                if(confirm('Yakin ingin menghapus jadwal ini?')) {
+                    this.schedules = this.schedules.filter(s => s.id !== id);
+                    this.saveData();
+                    this.showToast('Berhasil dihapus.', 'info');
+                }
             }
 
             checkConflict(className, day, start, end, ignoreId = null) {
@@ -545,15 +489,17 @@
                     const end = `${(startH+1).toString().padStart(2,'0')}:30`;
                     
                     if(!this.checkConflict(c, d, start, end)) {
-                        this.addScheduleData({
+                        this.schedules.push({
+                            id: Date.now().toString() + i,
                             className: c, day: d, timeStart: start, timeEnd: end,
                             subject: mapels[Math.floor(Math.random()*mapels.length)],
                             teacher: gurus[Math.floor(Math.random()*gurus.length)],
-                            color: this.getColor('dummy')
+                            color: this.getColor('dummy' + i)
                         });
                         count++;
                     }
                 }
+                this.saveData();
                 this.showToast(`${count} Data Dummy ditambahkan!`);
             }
 
@@ -633,7 +579,7 @@
                 document.getElementById('print-filter-info').innerText = `Filter: ${this.currentClassFilter}, Dicetak: ${new Date().toLocaleDateString()}`;
             }
 
-            // --- HELPERS ---
+            // --- AUTO SLOT (CARI SLOT KOSONG) ---
             scanSlots(targetDays, duration, className, limit = 5) {
                 const results = [];
                 targetDays.forEach(day => {
@@ -685,14 +631,16 @@
             }
 
             confirmAutoSlot(day, start, end, cls, sub, tea) {
-                this.addScheduleData({
+                this.schedules.push({
+                    id: Date.now().toString(),
                     className: cls, day, timeStart: start, timeEnd: end, subject: sub, teacher: tea, color: this.getColor(sub)
                 });
+                this.saveData();
                 this.closeAutoGenerateModal();
                 this.showToast("Jadwal Otomatis Disimpan!");
             }
 
-            // Utils
+            // --- UTILITIES ---
             sortSchedules() {
                 const days = { "Senin":1, "Selasa":2, "Rabu":3, "Kamis":4, "Jumat":5, "Sabtu":6, "Minggu":7 };
                 this.schedules.sort((a,b) => (days[a.day]-days[b.day]) || a.timeStart.localeCompare(b.timeStart));
@@ -701,7 +649,7 @@
             filterByClass(c) { this.currentClassFilter = c; this.render(); }
             handleSearch(q) { this.searchQuery = q; this.render(); }
             
-            // Modal Openers that need to be aware of Effective Days
+            // Modal Openers
             openModal() { 
                 const m = document.getElementById('modal-form');
                 m.classList.remove('opacity-0', 'pointer-events-none'); 
@@ -718,7 +666,6 @@
                 const m = document.getElementById('modal-auto-generate');
                 m.classList.remove('opacity-0', 'pointer-events-none');
                 
-                // Populate Day Filter
                 const autoDaySelect = document.getElementById('auto-day');
                 autoDaySelect.innerHTML = `<option value="">Semua Hari Efektif</option>` + 
                                           this.effectiveDays.map(d => `<option value="${d}">${d}</option>`).join('');
@@ -729,7 +676,6 @@
                 m.classList.remove('opacity-0', 'pointer-events-none');
                 m.querySelector('.modal-container').classList.add('scale-100');
                 
-                // Render Checkboxes
                 const container = document.getElementById('settings-days-container');
                 container.innerHTML = this.allDays.map(d => {
                     const isChecked = this.effectiveDays.includes(d) ? 'checked' : '';
@@ -749,7 +695,7 @@
             editSchedule(id) {
                 const s = this.schedules.find(x => x.id === id);
                 if (!s) return;
-                // Ensure day dropdown has the option even if settings changed
+                
                 const daySelect = document.getElementById('input-day');
                 daySelect.innerHTML = this.allDays.map(d => `<option value="${d}">${d}</option>`).join('');
                 
@@ -764,23 +710,69 @@
                 document.getElementById('modal-form').querySelector('.modal-container').classList.add('scale-100');
             }
 
-            logout() { location.reload(); }
             toggleDarkMode() { this.isDarkMode = !this.isDarkMode; localStorage.setItem('darkMode', this.isDarkMode); this.applyDarkMode(); }
             applyDarkMode() { document.querySelector('html').classList.toggle('dark', this.isDarkMode); }
             getColor(s) { let h=0; for(let i=0;i<s.length;i++)h=s.charCodeAt(i)+((h<<5)-h); return '#'+'00000'.substring(0,6-(h&0xFFFFFF).toString(16).length)+(h&0xFFFFFF).toString(16); }
+            
             showToast(msg, type='success') {
                 const t = document.getElementById('toast');
                 document.getElementById('toast-message').innerText = msg;
                 document.getElementById('toast-icon').className = type==='error'?'fas fa-exclamation-circle text-red-500':'fas fa-check-circle text-green-500';
                 t.classList.remove('translate-y-32'); setTimeout(()=>t.classList.add('translate-y-32'), 3000);
             }
+            
             updateStats() {
                 document.getElementById('total-classes').innerText = this.schedules.length;
                 if (this.schedules.length > 0) {
                    const c = {}; this.schedules.forEach(s => c[s.day] = (c[s.day]||0)+1);
                    document.getElementById('busiest-day').innerText = Object.keys(c).reduce((a,b)=>c[a]>c[b]?a:b);
+                } else {
+                   document.getElementById('busiest-day').innerText = "-";
+                }
+                this.updateNextClassDisplay();
+            }
+
+            updateNextClassDisplay() {
+                if (this.schedules.length === 0) { this.setNextClassUI("-", ""); return; }
+                const now = new Date(); 
+                const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                const dayOrder = { "Minggu": 0, "Senin": 1, "Selasa": 2, "Rabu": 3, "Kamis": 4, "Jumat": 5, "Sabtu": 6 };
+                const curDayIdx = now.getDay(); 
+                const curTime = now.getHours() * 60 + now.getMinutes();
+                
+                let upcoming = [];
+                this.schedules.forEach(s => {
+                    const sDayIdx = dayOrder[s.day];
+                    const [sh, sm] = s.timeStart.split(':').map(Number);
+                    const sTime = sh * 60 + sm;
+                    let diff = 0;
+                    if (sDayIdx === curDayIdx) {
+                        diff = sTime > curTime ? sTime - curTime : (7*24*60) - (curTime - sTime);
+                    }
+                    else if (sDayIdx > curDayIdx) {
+                        diff = ((sDayIdx - curDayIdx) * 24 * 60) + (sTime - curTime);
+                    }
+                    else {
+                        diff = ((7 - (curDayIdx - sDayIdx)) * 24 * 60) + (sTime - curTime);
+                    }
+                    upcoming.push({ ...s, diff });
+                });
+                
+                if (upcoming.length > 0) {
+                    upcoming.sort((a, b) => a.diff - b.diff);
+                    const next = upcoming[0];
+                    let info = next.diff < 60 ? `${next.className} • ${next.diff} mnt` : next.diff < 1440 ? `${next.className} • Hari ini ${next.timeStart}` : `${next.className} • ${next.day} ${next.timeStart}`;
+                    this.setNextClassUI(next.subject, info);
+                } else {
+                    this.setNextClassUI("-", "");
                 }
             }
+
+            setNextClassUI(s, t) { 
+                document.getElementById('next-class-subject').innerText = s; 
+                document.getElementById('next-class-time').innerText = t; 
+            }
+
             startClock() { setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString('id-ID'), 1000); }
         }
 
