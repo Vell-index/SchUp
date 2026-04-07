@@ -1,1171 +1,596 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id" class="light">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Manajemen Jadwal (Pro + Cloud)</title>
-
+    
     <!-- Firebase SDK -->
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-      import {
-        getAuth,
-        signInAnonymously,
-        signInWithCustomToken,
-        onAuthStateChanged,
-      } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-      import {
-        getFirestore,
-        collection,
-        addDoc,
-        updateDoc,
-        deleteDoc,
-        doc,
-        onSnapshot,
-        query,
-        setDoc,
-      } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-      // Global Assignment
-      window.firebaseModules = {
-        initializeApp,
-        getAuth,
-        signInAnonymously,
-        signInWithCustomToken,
-        onAuthStateChanged,
-        getFirestore,
-        collection,
-        addDoc,
-        updateDoc,
-        deleteDoc,
-        doc,
-        onSnapshot,
-        query,
-        setDoc,
-      };
+        // Global Assignment
+        window.firebaseModules = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, setDoc };
     </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      tailwind.config = { darkMode: "class" };
+        tailwind.config = { darkMode: 'class' }
     </script>
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
-      }
-      .dark ::-webkit-scrollbar-thumb {
-        background: #475569;
-      }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        
+        .modal { transition: opacity 0.25s ease; }
+        .login-fade { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-      .modal {
-        transition: opacity 0.25s ease;
-      }
-      .login-fade {
-        animation: fadeIn 0.5s ease-in-out;
-      }
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(20px);
+        @media print {
+            @page { size: A4 landscape; margin: 1cm; }
+            body { background: white; color: black; -webkit-print-color-adjust: exact; }
+            #main-app { display: block !important; }
+            header, #controls-section, #login-screen, #toast, .no-print { display: none !important; }
+            #schedule-container { display: none !important; }
+            #print-view { display: block !important; width: 100%; }
+            .print-table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+            .print-table th, .print-table td { border: 1px solid #333; padding: 4px; vertical-align: top; }
+            .print-table th { background-color: #f3f4f6 !important; font-weight: bold; text-align: center; }
+            .print-item { margin-bottom: 4px; padding: 2px; border: 1px solid #ddd; border-radius: 4px; background-color: #f9fafb; }
         }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      @media print {
-        @page {
-          size: A4 landscape;
-          margin: 1cm;
-        }
-        body {
-          background: white;
-          color: black;
-          -webkit-print-color-adjust: exact;
-        }
-        #main-app {
-          display: block !important;
-        }
-        header,
-        #controls-section,
-        #login-screen,
-        #toast,
-        .no-print {
-          display: none !important;
-        }
-        #schedule-container {
-          display: none !important;
-        }
-        #print-view {
-          display: block !important;
-          width: 100%;
-        }
-        .print-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 10pt;
-        }
-        .print-table th,
-        .print-table td {
-          border: 1px solid #333;
-          padding: 4px;
-          vertical-align: top;
-        }
-        .print-table th {
-          background-color: #f3f4f6 !important;
-          font-weight: bold;
-          text-align: center;
-        }
-        .print-item {
-          margin-bottom: 4px;
-          padding: 2px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          background-color: #f9fafb;
-        }
-      }
     </style>
-  </head>
-  <body
-    class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen transition-colors duration-300 font-sans"
-  >
-    <!-- LOGIN SCREEN -->
-    <div
-      id="login-screen"
-      class="fixed inset-0 z-50 bg-gradient-to-br from-indigo-500 to-purple-700 flex items-center justify-center p-4 login-fade"
-    >
-      <div
-        class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-sm w-full"
-      >
-        <div class="text-center mb-6">
-          <div
-            class="inline-block p-3 rounded-full bg-indigo-100 dark:bg-indigo-900 mb-3"
-          >
-            <i
-              class="fas fa-school text-3xl text-indigo-600 dark:text-indigo-400"
-            ></i>
-          </div>
-          <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
-            Smart Schedule
-          </h1>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
-            Sistem Jadwal Cloud
-          </p>
-          <div id="loading-auth" class="text-xs text-indigo-300 mt-2">
-            Menghubungkan ke Database...
-          </div>
-        </div>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen transition-colors duration-300 font-sans">
 
-        <form
-          onsubmit="
-            event.preventDefault();
-            app.processLogin();
-          "
-          class="space-y-4"
-        >
-          <div>
-            <label
-              class="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase mb-1"
-              >Username</label
-            >
-            <input
-              type="text"
-              id="login-user"
-              placeholder="admin / guru / siswa"
-              class="w-full pl-4 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-              required
-              disabled
-            />
-          </div>
-          <div>
-            <label
-              class="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase mb-1"
-              >Password</label
-            >
-            <input
-              type="password"
-              id="login-pass"
-              placeholder="Admin: admin | Guru: 1234"
-              class="w-full pl-4 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-              disabled
-            />
-          </div>
-          <button
-            type="submit"
-            id="btn-login"
-            class="w-full py-3 bg-gray-400 text-white font-bold rounded-lg transition shadow-lg flex justify-center items-center gap-2 cursor-not-allowed"
-            disabled
-          >
-            Masuk <i class="fas fa-arrow-right text-sm"></i>
-          </button>
-        </form>
-        <div
-          class="mt-6 pt-4 border-t dark:border-gray-700 text-left text-xs text-gray-500 space-y-1"
-        >
-          <p>
-            <i class="fas fa-user-shield w-4"></i> <strong>Admin:</strong> user
-            `admin`, pass `admin`
-          </p>
-          <p>
-            <i class="fas fa-chalkboard-teacher w-4"></i>
-            <strong>Guru:</strong> user `guru`, pass `1234`
-          </p>
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="fixed inset-0 z-50 bg-gradient-to-br from-indigo-500 to-purple-700 flex items-center justify-center p-4 login-fade">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-sm w-full">
+            <div class="text-center mb-6">
+                <div class="inline-block p-3 rounded-full bg-indigo-100 dark:bg-indigo-900 mb-3">
+                    <i class="fas fa-school text-3xl text-indigo-600 dark:text-indigo-400"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Smart Schedule</h1>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Sistem Jadwal Cloud</p>
+                <div id="loading-auth" class="text-xs text-indigo-300 mt-2 font-medium">Menghubungkan ke Database...</div>
+            </div>
+            
+            <form onsubmit="event.preventDefault(); app.processLogin();" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase mb-1">Username</label>
+                    <input type="text" id="login-user" placeholder="admin / guru / siswa" class="w-full pl-4 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" required disabled>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase mb-1">Password</label>
+                    <input type="password" id="login-pass" placeholder="Admin: admin | Guru: 1234" class="w-full pl-4 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" disabled>
+                </div>
+                <button type="submit" id="btn-login" class="w-full py-3 bg-gray-400 text-white font-bold rounded-lg transition shadow-lg flex justify-center items-center gap-2 cursor-not-allowed" disabled>
+                    Masuk <i class="fas fa-arrow-right text-sm"></i>
+                </button>
+            </form>
+            <div class="mt-6 pt-4 border-t dark:border-gray-700 text-left text-xs text-gray-500 space-y-1">
+                <p><i class="fas fa-user-shield w-4"></i> <strong>Admin:</strong> user `admin`, pass `admin`</p>
+                <p><i class="fas fa-chalkboard-teacher w-4"></i> <strong>Guru:</strong> user `guru`, pass `1234`</p>
+            </div>
         </div>
-      </div>
     </div>
 
     <!-- MAIN APP -->
     <div id="main-app" class="hidden">
-      <!-- HEADER -->
-      <header
-        class="bg-indigo-600 dark:bg-indigo-800 text-white p-4 shadow-lg sticky top-0 z-20 transition-colors"
-      >
-        <div class="container mx-auto flex justify-between items-center">
-          <div class="flex items-center gap-3">
-            <h1 class="text-xl font-bold flex items-center gap-2">
-              <i class="fas fa-calendar-alt"></i>
-              <span class="hidden md:inline">Smart Schedule Pro</span>
-            </h1>
-            <span
-              id="user-badge"
-              class="px-2 py-0.5 rounded text-xs font-bold uppercase bg-white/20 border border-white/30"
-              >Tamu</span
-            >
-          </div>
-          <div class="flex items-center gap-3">
-            <div
-              class="text-sm opacity-80 font-mono hidden md:block"
-              id="clock"
-            >
-              00:00:00
+        <!-- HEADER -->
+        <header class="bg-indigo-600 dark:bg-indigo-800 text-white p-4 shadow-lg sticky top-0 z-20 transition-colors">
+            <div class="container mx-auto flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <h1 class="text-xl font-bold flex items-center gap-2">
+                        <i class="fas fa-calendar-alt"></i> 
+                        <span class="hidden md:inline">Smart Schedule Pro</span>
+                    </h1>
+                    <span id="user-badge" class="px-2 py-0.5 rounded text-xs font-bold uppercase bg-white/20 border border-white/30">Tamu</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="text-sm opacity-80 font-mono hidden md:block" id="clock">00:00:00</div>
+                    <button onclick="app.toggleDarkMode()" class="p-2 rounded-full hover:bg-white/20 transition"><i class="fas fa-moon dark:hidden"></i><i class="fas fa-sun hidden dark:inline text-yellow-300"></i></button>
+                    <button onclick="app.logout()" class="p-2 rounded-full hover:bg-red-500 transition text-red-200 hover:text-white" title="Keluar"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
             </div>
-            <button
-              onclick="app.toggleDarkMode()"
-              class="p-2 rounded-full hover:bg-white/20 transition"
-            >
-              <i class="fas fa-moon dark:hidden"></i
-              ><i class="fas fa-sun hidden dark:inline text-yellow-300"></i>
-            </button>
-            <button
-              onclick="app.logout()"
-              class="p-2 rounded-full hover:bg-red-500 transition text-red-200 hover:text-white"
-              title="Keluar"
-            >
-              <i class="fas fa-sign-out-alt"></i>
-            </button>
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <!-- CONTENT -->
-      <main class="container mx-auto p-4 md:p-6">
-        <!-- CONTROLS -->
-        <div id="controls-section" class="flex flex-col gap-4 mb-6">
-          <div class="flex flex-col md:flex-row gap-4 justify-between">
-            <div class="flex gap-4 flex-1">
-              <input
-                type="text"
-                id="search-input"
-                oninput="app.handleSearch(this.value)"
-                placeholder="Cari mapel/guru..."
-                class="w-full md:w-1/3 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
-              />
-              <select
-                id="class-filter"
-                onchange="app.filterByClass(this.value)"
-                class="w-full md:w-1/4 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
-              >
-                <option value="all">Semua Kelas</option>
-              </select>
+        <!-- CONTENT -->
+        <main class="container mx-auto p-4 md:p-6">
+            <!-- CONTROLS -->
+            <div id="controls-section" class="flex flex-col gap-4 mb-6">
+                <div class="flex flex-col md:flex-row gap-4 justify-between">
+                    <div class="flex gap-4 flex-1">
+                        <input type="text" id="search-input" oninput="app.handleSearch(this.value)" placeholder="Cari mapel/guru..." class="w-full md:w-1/3 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800">
+                        <select id="class-filter" onchange="app.filterByClass(this.value)" class="w-full md:w-1/4 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800">
+                            <option value="all">Semua Kelas</option>
+                        </select>
+                    </div>
+                    
+                    <!-- ADMIN ONLY BUTTONS -->
+                    <div id="admin-controls" class="flex gap-2 hidden flex-wrap justify-end">
+                        <button onclick="app.openSettingsModal()" class="bg-gray-700 hover:bg-gray-800 text-white px-3 py-2 rounded-lg shadow text-sm" title="Pengaturan Hari Efektif">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <button onclick="app.generateDummyData()" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg shadow text-sm">
+                            <i class="fas fa-database mr-1"></i> Dummy
+                        </button>
+                        <button onclick="app.printSchedule()" class="bg-teal-600 hover:bg-teal-700 text-white px-3 py-2 rounded-lg shadow text-sm">
+                            <i class="fas fa-print mr-1"></i> Cetak
+                        </button>
+                        <button onclick="app.openAutoGenerateModal()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg shadow text-sm">
+                            <i class="fas fa-magic mr-1"></i> Auto
+                        </button>
+                        <button onclick="app.openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg shadow text-sm">
+                            <i class="fas fa-plus mr-1"></i> Tambah
+                        </button>
+                    </div>
+                </div>
+
+                <!-- DAY TABS -->
+                <div class="flex overflow-x-auto bg-white dark:bg-gray-800 p-1 rounded-lg shadow w-full scrollbar-hide">
+                    <div class="flex gap-1 min-w-max" id="day-tabs">
+                        <!-- JS injected -->
+                    </div>
+                </div>
             </div>
 
-            <!-- ADMIN ONLY BUTTONS -->
-            <div
-              id="admin-controls"
-              class="flex gap-2 hidden flex-wrap justify-end"
-            >
-              <button
-                onclick="app.openSettingsModal()"
-                class="bg-gray-700 hover:bg-gray-800 text-white px-3 py-2 rounded-lg shadow text-sm"
-                title="Pengaturan Hari Efektif"
-              >
-                <i class="fas fa-cog"></i>
-              </button>
-              <button
-                onclick="app.generateDummyData()"
-                class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg shadow text-sm"
-              >
-                <i class="fas fa-database mr-1"></i> Dummy
-              </button>
-              <button
-                onclick="app.printSchedule()"
-                class="bg-teal-600 hover:bg-teal-700 text-white px-3 py-2 rounded-lg shadow text-sm"
-              >
-                <i class="fas fa-print mr-1"></i> Cetak
-              </button>
-              <button
-                onclick="app.openAutoGenerateModal()"
-                class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg shadow text-sm"
-              >
-                <i class="fas fa-magic mr-1"></i> Auto
-              </button>
-              <button
-                onclick="app.openModal()"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg shadow text-sm"
-              >
-                <i class="fas fa-plus mr-1"></i> Tambah
-              </button>
+            <!-- STATS -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 no-print">
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border-l-4 border-blue-500">
+                    <div class="text-gray-500 text-xs uppercase font-bold">Total Kelas</div>
+                    <div class="text-2xl font-bold" id="total-classes">0</div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border-l-4 border-green-500">
+                    <div class="text-gray-500 text-xs uppercase font-bold">Hari Terpadat</div>
+                    <div class="text-2xl font-bold" id="busiest-day">-</div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border-l-4 border-purple-500">
+                    <div class="text-gray-500 text-xs uppercase font-bold">Kelas Selanjutnya</div>
+                    <div class="flex flex-col"><span class="text-lg font-bold truncate" id="next-class-subject">-</span><span class="text-xs text-gray-500" id="next-class-time"></span></div>
+                </div>
             </div>
-          </div>
 
-          <!-- DAY TABS -->
-          <div
-            class="flex overflow-x-auto bg-white dark:bg-gray-800 p-1 rounded-lg shadow w-full scrollbar-hide"
-          >
-            <div class="flex gap-1 min-w-max" id="day-tabs">
-              <!-- JS injected -->
-            </div>
-          </div>
-        </div>
+            <!-- CARD VIEW (SCREEN) -->
+            <div id="schedule-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20"></div>
 
-        <!-- STATS -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 no-print">
-          <div
-            class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border-l-4 border-blue-500"
-          >
-            <div class="text-gray-500 text-xs uppercase font-bold">
-              Total Kelas
+            <!-- PRINT VIEW -->
+            <div id="print-view" class="hidden bg-white p-4">
+                <div class="text-center mb-4 border-b pb-4">
+                    <h1 class="text-2xl font-bold">JADWAL PELAJARAN SEKOLAH</h1>
+                    <p class="text-sm">Tahun Ajaran 2024/2025</p>
+                    <p class="text-xs text-gray-500 mt-1" id="print-filter-info"></p>
+                </div>
+                <div id="print-table-container"></div>
             </div>
-            <div class="text-2xl font-bold" id="total-classes">0</div>
-          </div>
-          <div
-            class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border-l-4 border-green-500"
-          >
-            <div class="text-gray-500 text-xs uppercase font-bold">
-              Hari Terpadat
-            </div>
-            <div class="text-2xl font-bold" id="busiest-day">-</div>
-          </div>
-          <div
-            class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border-l-4 border-purple-500"
-          >
-            <div class="text-gray-500 text-xs uppercase font-bold">
-              Kelas Selanjutnya
-            </div>
-            <div class="flex flex-col">
-              <span class="text-lg font-bold truncate" id="next-class-subject"
-                >-</span
-              ><span class="text-xs text-gray-500" id="next-class-time"></span>
-            </div>
-          </div>
-        </div>
 
-        <!-- CARD VIEW (SCREEN) -->
-        <div
-          id="schedule-container"
-          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20"
-        ></div>
-
-        <!-- PRINT VIEW -->
-        <div id="print-view" class="hidden bg-white p-4">
-          <div class="text-center mb-4 border-b pb-4">
-            <h1 class="text-2xl font-bold">JADWAL PELAJARAN SEKOLAH</h1>
-            <p class="text-sm">Tahun Ajaran 2024/2025</p>
-            <p class="text-xs text-gray-500 mt-1" id="print-filter-info"></p>
-          </div>
-          <div id="print-table-container"></div>
-        </div>
-
-        <!-- EMPTY STATE -->
-        <div id="empty-state" class="hidden text-center py-20 no-print">
-          <div class="text-gray-300 dark:text-gray-600 text-6xl mb-4">
-            <i class="fas fa-clipboard-list"></i>
-          </div>
-          <h3 class="text-xl font-medium text-gray-600 dark:text-gray-300">
-            Tidak ada jadwal
-          </h3>
-        </div>
-      </main>
+            <!-- EMPTY STATE -->
+            <div id="empty-state" class="hidden text-center py-20 no-print">
+                <div class="text-gray-300 dark:text-gray-600 text-6xl mb-4"><i class="fas fa-clipboard-list"></i></div>
+                <h3 class="text-xl font-medium text-gray-600 dark:text-gray-300">Tidak ada jadwal</h3>
+            </div>
+        </main>
     </div>
 
     <!-- MODAL FORM (ADD/EDIT) -->
-    <div
-      id="modal-form"
-      class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50 px-4"
-    >
-      <div
-        class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50 backdrop-blur-sm"
-        onclick="app.closeModal()"
-      ></div>
-      <div
-        class="modal-container bg-white dark:bg-gray-800 w-full max-w-md mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto transform transition scale-95 duration-300"
-      >
-        <div class="p-6">
-          <h3 class="text-xl font-bold mb-4 dark:text-white" id="modal-title">
-            Jadwal
-          </h3>
-          <form
-            id="scheduleForm"
-            onsubmit="
-              event.preventDefault();
-              app.saveSchedule();
-            "
-            class="space-y-3"
-          >
-            <input type="hidden" id="input-id" />
-            <div>
-              <label class="text-xs font-bold dark:text-gray-300">Kelas</label
-              ><input
-                type="text"
-                id="input-class-name"
-                list="existing-classes"
-                class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white"
-                required
-              /><datalist id="existing-classes"></datalist>
+    <div id="modal-form" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50 px-4">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50 backdrop-blur-sm" onclick="app.closeModal()"></div>
+        <div class="modal-container bg-white dark:bg-gray-800 w-full max-w-md mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto transform transition scale-95 duration-300">
+            <div class="p-6">
+                <h3 class="text-xl font-bold mb-4 dark:text-white" id="modal-title">Jadwal</h3>
+                <form id="scheduleForm" onsubmit="event.preventDefault(); app.saveSchedule();" class="space-y-3">
+                    <input type="hidden" id="input-id">
+                    <div><label class="text-xs font-bold dark:text-gray-300">Kelas</label><input type="text" id="input-class-name" list="existing-classes" class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white" required><datalist id="existing-classes"></datalist></div>
+                    <div>
+                        <label class="text-xs font-bold dark:text-gray-300">Hari</label>
+                        <select id="input-day" class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white" required>
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div><label class="text-xs font-bold dark:text-gray-300">Mulai</label><input type="time" id="input-time-start" class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white" required></div>
+                        <div><label class="text-xs font-bold dark:text-gray-300">Selesai</label><input type="time" id="input-time-end" class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white" required></div>
+                    </div>
+                    <div><label class="text-xs font-bold dark:text-gray-300">Mapel</label><input type="text" id="input-subject" class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white" required></div>
+                    <div><label class="text-xs font-bold dark:text-gray-300">Guru</label><input type="text" id="input-teacher" class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white" required></div>
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button type="button" onclick="app.closeModal()" class="px-4 py-2 bg-gray-200 rounded text-gray-700">Batal</button>
+                        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded">Simpan</button>
+                    </div>
+                </form>
             </div>
-            <div>
-              <label class="text-xs font-bold dark:text-gray-300">Hari</label>
-              <select
-                id="input-day"
-                class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white"
-                required
-              >
-                <!-- Populated by JS -->
-              </select>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="text-xs font-bold dark:text-gray-300">Mulai</label
-                ><input
-                  type="time"
-                  id="input-time-start"
-                  class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white"
-                  required
-                />
-              </div>
-              <div>
-                <label class="text-xs font-bold dark:text-gray-300"
-                  >Selesai</label
-                ><input
-                  type="time"
-                  id="input-time-end"
-                  class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label class="text-xs font-bold dark:text-gray-300">Mapel</label
-              ><input
-                type="text"
-                id="input-subject"
-                class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white"
-                required
-              />
-            </div>
-            <div>
-              <label class="text-xs font-bold dark:text-gray-300">Guru</label
-              ><input
-                type="text"
-                id="input-teacher"
-                class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white"
-                required
-              />
-            </div>
-            <div class="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onclick="app.closeModal()"
-                class="px-4 py-2 bg-gray-200 rounded text-gray-700"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                class="px-4 py-2 bg-indigo-600 text-white rounded"
-              >
-                Simpan
-              </button>
-            </div>
-          </form>
         </div>
-      </div>
     </div>
 
     <!-- MODAL SETTINGS (EFFECTIVE DAYS) -->
-    <div
-      id="modal-settings"
-      class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50 px-4"
-    >
-      <div
-        class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50 backdrop-blur-sm"
-        onclick="app.closeSettingsModal()"
-      ></div>
-      <div
-        class="modal-container bg-white dark:bg-gray-800 w-full max-w-sm mx-auto rounded-xl shadow-2xl z-50 p-6 transform transition scale-95 duration-300"
-      >
-        <h3 class="text-xl font-bold mb-4 dark:text-white">
-          <i class="fas fa-calendar-check mr-2"></i>Hari Efektif
-        </h3>
-        <p class="text-sm text-gray-500 mb-4">
-          Pilih hari-hari yang aktif untuk kegiatan belajar mengajar.
-        </p>
-        <form
-          onsubmit="
-            event.preventDefault();
-            app.saveSettings();
-          "
-          class="space-y-2"
-        >
-          <div id="settings-days-container" class="space-y-2">
-            <!-- Checkboxes injected by JS -->
-          </div>
-          <div class="flex justify-end gap-2 pt-4">
-            <button
-              type="button"
-              onclick="app.closeSettingsModal()"
-              class="px-4 py-2 bg-gray-200 rounded text-gray-700"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              class="px-4 py-2 bg-blue-600 text-white rounded"
-            >
-              Simpan Konfigurasi
-            </button>
-          </div>
-        </form>
-      </div>
+    <div id="modal-settings" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50 px-4">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50 backdrop-blur-sm" onclick="app.closeSettingsModal()"></div>
+        <div class="modal-container bg-white dark:bg-gray-800 w-full max-w-sm mx-auto rounded-xl shadow-2xl z-50 p-6 transform transition scale-95 duration-300">
+            <h3 class="text-xl font-bold mb-4 dark:text-white"><i class="fas fa-calendar-check mr-2"></i>Hari Efektif</h3>
+            <p class="text-sm text-gray-500 mb-4">Pilih hari-hari yang aktif untuk kegiatan belajar mengajar.</p>
+            <form onsubmit="event.preventDefault(); app.saveSettings();" class="space-y-2">
+                <div id="settings-days-container" class="space-y-2">
+                    <!-- Checkboxes injected by JS -->
+                </div>
+                <div class="flex justify-end gap-2 pt-4">
+                    <button type="button" onclick="app.closeSettingsModal()" class="px-4 py-2 bg-gray-200 rounded text-gray-700">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">Simpan Konfigurasi</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- MODAL ALTERNATIVES (CONFLICT) -->
-    <div
-      id="modal-conflict"
-      class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50 px-4"
-    >
-      <div
-        class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50 backdrop-blur-sm"
-      ></div>
-      <div
-        class="modal-container bg-white dark:bg-gray-800 w-full max-w-lg mx-auto rounded-xl shadow-2xl z-50 transform transition scale-95 duration-300"
-      >
-        <div class="p-6">
-          <div class="text-center mb-4">
-            <div
-              class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-2"
-            >
-              <i class="fas fa-exclamation-triangle text-red-600"></i>
+    <div id="modal-conflict" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50 px-4">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50 backdrop-blur-sm"></div>
+        <div class="modal-container bg-white dark:bg-gray-800 w-full max-w-lg mx-auto rounded-xl shadow-2xl z-50 transform transition scale-95 duration-300">
+            <div class="p-6">
+                <div class="text-center mb-4">
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-2"><i class="fas fa-exclamation-triangle text-red-600"></i></div>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Jadwal Bentrok!</h3>
+                    <p class="text-sm text-gray-500">Waktu yang Anda pilih bertabrakan dengan jadwal lain.</p>
+                </div>
+                <div class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded mb-4">
+                    <h4 class="text-xs font-bold text-yellow-800 dark:text-yellow-200 uppercase mb-2">Alternatif Tersedia (Durasi sama):</h4>
+                    <div id="conflict-alternatives" class="space-y-2 max-h-40 overflow-y-auto"></div>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button onclick="document.getElementById('modal-conflict').classList.add('opacity-0', 'pointer-events-none')" class="px-4 py-2 bg-gray-200 rounded text-gray-700">Batal</button>
+                </div>
             </div>
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white">
-              Jadwal Bentrok!
-            </h3>
-            <p class="text-sm text-gray-500">
-              Waktu yang Anda pilih bertabrakan dengan jadwal lain.
-            </p>
-          </div>
-          <div class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded mb-4">
-            <h4
-              class="text-xs font-bold text-yellow-800 dark:text-yellow-200 uppercase mb-2"
-            >
-              Alternatif Tersedia (Durasi sama):
-            </h4>
-            <div
-              id="conflict-alternatives"
-              class="space-y-2 max-h-40 overflow-y-auto"
-            ></div>
-          </div>
-          <div class="flex justify-end gap-2">
-            <button
-              onclick="
-                document
-                  .getElementById('modal-conflict')
-                  .classList.add('opacity-0', 'pointer-events-none')
-              "
-              class="px-4 py-2 bg-gray-200 rounded text-gray-700"
-            >
-              Batal
-            </button>
-          </div>
         </div>
-      </div>
     </div>
 
     <!-- MODAL AUTO GENERATE -->
-    <div
-      id="modal-auto-generate"
-      class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50 px-4"
-    >
-      <div
-        class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50 backdrop-blur-sm"
-        onclick="app.closeAutoGenerateModal()"
-      ></div>
-      <div
-        class="modal-container bg-white dark:bg-gray-800 w-full max-w-lg mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto p-6"
-      >
-        <h3 class="text-xl font-bold mb-4 dark:text-white">
-          <i class="fas fa-magic text-purple-500"></i> Cari Slot Kosong
-        </h3>
-        <div class="space-y-3">
-          <div class="grid grid-cols-2 gap-2">
-            <input
-              type="text"
-              id="auto-class"
-              placeholder="Kelas"
-              list="existing-classes"
-              class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white"
-            />
-            <!-- New: Day Selector for Auto Slot -->
-            <select
-              id="auto-day"
-              class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white"
-            >
-              <option value="">Semua Hari Efektif</option>
-              <!-- Populated by JS -->
-            </select>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <input
-              type="text"
-              id="auto-subject"
-              placeholder="Mapel"
-              class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white"
-            />
-            <input
-              type="number"
-              id="auto-duration"
-              value="90"
-              placeholder="Menit"
-              class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white"
-            />
-          </div>
-          <input
-            type="text"
-            id="auto-teacher"
-            placeholder="Guru"
-            class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white"
-          />
-          <button
-            onclick="app.findAvailableSlots()"
-            class="w-full bg-purple-600 text-white py-2 rounded"
-          >
-            Cari Slot
-          </button>
+    <div id="modal-auto-generate" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50 px-4">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50 backdrop-blur-sm" onclick="app.closeAutoGenerateModal()"></div>
+        <div class="modal-container bg-white dark:bg-gray-800 w-full max-w-lg mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto p-6">
+             <h3 class="text-xl font-bold mb-4 dark:text-white"><i class="fas fa-magic text-purple-500"></i> Cari Slot Kosong</h3>
+             <div class="space-y-3">
+                 <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="auto-class" placeholder="Kelas" list="existing-classes" class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white">
+                    <!-- New: Day Selector for Auto Slot -->
+                    <select id="auto-day" class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white">
+                        <option value="">Semua Hari Efektif</option>
+                        <!-- Populated by JS -->
+                    </select>
+                 </div>
+                 <div class="grid grid-cols-2 gap-2">
+                     <input type="text" id="auto-subject" placeholder="Mapel" class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white">
+                     <input type="number" id="auto-duration" value="90" placeholder="Menit" class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white">
+                 </div>
+                 <input type="text" id="auto-teacher" placeholder="Guru" class="w-full border rounded p-2 dark:bg-gray-700 dark:text-white">
+                 <button onclick="app.findAvailableSlots()" class="w-full bg-purple-600 text-white py-2 rounded">Cari Slot</button>
+             </div>
+             <div id="auto-results" class="mt-4 hidden space-y-2"></div>
         </div>
-        <div id="auto-results" class="mt-4 hidden space-y-2"></div>
-      </div>
     </div>
 
     <!-- TOAST -->
-    <div
-      id="toast"
-      class="fixed bottom-5 right-5 z-50 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-32 transition duration-300 flex items-center gap-3"
-    >
-      <i id="toast-icon"></i><span id="toast-message"></span>
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-32 transition duration-300 flex items-center gap-3">
+        <i id="toast-icon"></i><span id="toast-message"></span>
     </div>
 
     <script>
-      class ScheduleApp {
-        constructor() {
-          this.schedules = [];
-          this.currentUserRole = null;
-          this.currentFilter = "all";
-          this.currentClassFilter = "all";
-          this.searchQuery = "";
-          this.editingId = null;
-          this.db = null;
-          this.auth = null;
-          this.appId = typeof __app_id !== "undefined" ? __app_id : "demo-app";
-          this.effectiveDays = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"]; // Default
-          this.allDays = [
-            "Senin",
-            "Selasa",
-            "Rabu",
-            "Kamis",
-            "Jumat",
-            "Sabtu",
-            "Minggu",
-          ];
-          this.listenerUnsubscribe = null;
-        }
-
-        async init() {
-          const {
-            initializeApp,
-            getAuth,
-            signInAnonymously,
-            signInWithCustomToken,
-            getFirestore,
-            collection,
-            onSnapshot,
-            onAuthStateChanged,
-            doc,
-          } = window.firebaseModules;
-          const firebaseConfig = {
-            apiKey: "AIzaSyXXXXX...",
-            authDomain: "proyek-anda.firebaseapp.com",
-            projectId: "proyek-anda",
-            storageBucket: "proyek-anda.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abcdef",
-          };
-          const app = initializeApp(firebaseConfig);
-          this.auth = getAuth(app);
-          this.db = getFirestore(app);
-
-          this.applyDarkMode();
-
-          const initAuth = async () => {
-            try {
-              if (
-                typeof __initial_auth_token !== "undefined" &&
-                __initial_auth_token
-              ) {
-                await signInWithCustomToken(this.auth, __initial_auth_token);
-              } else {
-                await signInAnonymously(this.auth);
-              }
-            } catch (error) {
-              console.error("Auth failed:", error);
+        class ScheduleApp {
+            constructor() {
+                this.schedules = [];
+                this.currentUserRole = null;
+                this.currentFilter = 'all';
+                this.currentClassFilter = 'all';
+                this.searchQuery = '';
+                this.editingId = null;
+                this.db = null;
+                this.auth = null;
+                this.appId = typeof __app_id !== 'undefined' ? __app_id : 'demo-app';
+                this.effectiveDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat']; // Default
+                this.allDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+                this.listenerUnsubscribe = null;
             }
-          };
 
-          initAuth();
+            async init() {
+                const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, getFirestore, collection, onSnapshot, onAuthStateChanged, doc } = window.firebaseModules;
+                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' && __firebase_config ? __firebase_config : '{}');
+                
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    this.auth = getAuth(app);
+                    this.db = getFirestore(app);
+                } catch (e) {
+                    console.error("Firebase Init Error:", e);
+                    const loadingEl = document.getElementById('loading-auth');
+                    loadingEl.innerText = "Error: Firebase configuration missing or invalid.";
+                    loadingEl.classList.replace('text-indigo-300', 'text-red-500');
+                    return;
+                }
 
-          onAuthStateChanged(this.auth, (user) => {
-            if (user) {
-              document.getElementById("loading-auth").innerText = "Terhubung.";
-              this.enableLoginUI();
-              if (!this.listenerUnsubscribe) {
-                this.setupRealtimeListener(user.uid);
-              }
-              this.setupSettingsListener(); // Load effective days
+                this.applyDarkMode();
+                
+                const initAuth = async () => {
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(this.auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(this.auth);
+                        }
+                    } catch (error) { 
+                        console.error("Auth failed:", error); 
+                        const loadingEl = document.getElementById('loading-auth');
+                        if (loadingEl) {
+                            loadingEl.innerText = "Koneksi Gagal: " + error.message + " (Pastikan Firebase Anonymous Auth aktif)";
+                            loadingEl.classList.replace('text-indigo-300', 'text-red-500');
+                        }
+                    }
+                };
+
+                initAuth();
+
+                onAuthStateChanged(this.auth, (user) => {
+                    if (user) {
+                        const loadingEl = document.getElementById('loading-auth');
+                        if (loadingEl) {
+                            loadingEl.innerText = "Terhubung dengan Database.";
+                            loadingEl.classList.replace('text-red-500', 'text-green-400');
+                        }
+                        this.enableLoginUI();
+                        if (!this.listenerUnsubscribe) {
+                            this.setupRealtimeListener(user.uid);
+                        }
+                        this.setupSettingsListener(); // Load effective days
+                    }
+                });
             }
-          });
-        }
 
-        enableLoginUI() {
-          document.getElementById("login-user").disabled = false;
-          document.getElementById("login-pass").disabled = false;
-          const btn = document.getElementById("btn-login");
-          btn.disabled = false;
-          btn.classList.remove("cursor-not-allowed", "bg-gray-400");
-          btn.classList.add("bg-indigo-600", "hover:bg-indigo-700");
-        }
-
-        setupRealtimeListener(uid) {
-          const { collection, onSnapshot } = window.firebaseModules;
-          const colRef = collection(
-            this.db,
-            "artifacts",
-            this.appId,
-            "public",
-            "data",
-            "schedules",
-          );
-
-          this.listenerUnsubscribe = onSnapshot(
-            colRef,
-            (snapshot) => {
-              this.schedules = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-              }));
-              this.schedules = this.schedules.map((s) => ({
-                ...s,
-                className: s.className || "Umum",
-              }));
-              this.sortSchedules();
-              this.render();
-              this.updateStats();
-            },
-            (error) => {
-              console.error("Error reading schedules:", error);
-              this.showToast("Gagal memuat data", "error");
-            },
-          );
-        }
-
-        setupSettingsListener() {
-          const { doc, onSnapshot } = window.firebaseModules;
-          // CORRECTED PATH FOR SETTINGS: 6 Segments (Even number)
-          const docRef = doc(
-            this.db,
-            "artifacts",
-            this.appId,
-            "public",
-            "data",
-            "settings",
-            "general",
-          );
-
-          onSnapshot(docRef, (docSnap) => {
-            if (docSnap.exists() && docSnap.data().effectiveDays) {
-              this.effectiveDays = docSnap.data().effectiveDays;
+            enableLoginUI() {
+                document.getElementById('login-user').disabled = false;
+                document.getElementById('login-pass').disabled = false;
+                const btn = document.getElementById('btn-login');
+                btn.disabled = false;
+                btn.classList.remove('cursor-not-allowed', 'bg-gray-400');
+                btn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
             }
-            this.render(); // Re-render tabs based on new settings
-          });
-        }
 
-        async saveSettings() {
-          const checkboxes = document.querySelectorAll(
-            'input[name="effective-day"]:checked',
-          );
-          const selectedDays = Array.from(checkboxes).map((cb) => cb.value);
+            setupRealtimeListener(uid) {
+                const { collection, onSnapshot } = window.firebaseModules;
+                const colRef = collection(this.db, 'artifacts', this.appId, 'public', 'data', 'schedules');
+                
+                this.listenerUnsubscribe = onSnapshot(colRef, (snapshot) => {
+                    this.schedules = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    this.schedules = this.schedules.map(s => ({...s, className: s.className || 'Umum'}));
+                    this.sortSchedules();
+                    this.render();
+                    this.updateStats();
+                }, (error) => {
+                    console.error("Error reading schedules:", error);
+                    this.showToast("Gagal memuat data", "error");
+                });
+            }
 
-          const dayOrder = {
-            Senin: 1,
-            Selasa: 2,
-            Rabu: 3,
-            Kamis: 4,
-            Jumat: 5,
-            Sabtu: 6,
-            Minggu: 7,
-          };
-          selectedDays.sort((a, b) => dayOrder[a] - dayOrder[b]);
+            setupSettingsListener() {
+                const { doc, onSnapshot } = window.firebaseModules;
+                // CORRECTED PATH FOR SETTINGS: 6 Segments (Even number)
+                const docRef = doc(this.db, 'artifacts', this.appId, 'public', 'data', 'settings', 'general');
+                
+                onSnapshot(docRef, (docSnap) => {
+                    if (docSnap.exists() && docSnap.data().effectiveDays) {
+                        this.effectiveDays = docSnap.data().effectiveDays;
+                    }
+                    this.render(); // Re-render tabs based on new settings
+                });
+            }
 
-          if (selectedDays.length === 0)
-            return alert("Pilih minimal satu hari efektif!");
+            async saveSettings() {
+                const checkboxes = document.querySelectorAll('input[name="effective-day"]:checked');
+                const selectedDays = Array.from(checkboxes).map(cb => cb.value);
+                
+                const dayOrder = { "Senin":1, "Selasa":2, "Rabu":3, "Kamis":4, "Jumat":5, "Sabtu":6, "Minggu":7 };
+                selectedDays.sort((a,b) => dayOrder[a] - dayOrder[b]);
 
-          const { doc, setDoc } = window.firebaseModules;
-          try {
-            // CORRECTED PATH FOR SETTINGS: 6 Segments (Even number)
-            await setDoc(
-              doc(
-                this.db,
-                "artifacts",
-                this.appId,
-                "public",
-                "data",
-                "settings",
-                "general",
-              ),
-              {
-                effectiveDays: selectedDays,
-              },
-              { merge: true },
-            );
-            this.showToast("Pengaturan Hari Efektif Disimpan!");
-            this.closeSettingsModal();
-          } catch (e) {
-            console.error(e);
-            this.showToast("Gagal menyimpan pengaturan", "error");
-          }
-        }
+                if (selectedDays.length === 0) return alert("Pilih minimal satu hari efektif!");
 
-        // --- LOGIN ---
-        processLogin() {
-          const user = document.getElementById("login-user").value.trim();
-          const pass = document.getElementById("login-pass").value.trim();
+                const { doc, setDoc } = window.firebaseModules;
+                try {
+                    // CORRECTED PATH FOR SETTINGS: 6 Segments (Even number)
+                    await setDoc(doc(this.db, 'artifacts', this.appId, 'public', 'data', 'settings', 'general'), {
+                        effectiveDays: selectedDays
+                    }, { merge: true });
+                    this.showToast("Pengaturan Hari Efektif Disimpan!");
+                    this.closeSettingsModal();
+                } catch(e) {
+                    console.error(e);
+                    this.showToast("Gagal menyimpan pengaturan", "error");
+                }
+            }
 
-          if (user.toLowerCase() === "admin" && pass === "admin")
-            this.setSession("admin", user);
-          else if (user.toLowerCase() === "guru" && pass === "1234")
-            this.setSession("teacher", user);
-          else if (
-            user.toLowerCase() !== "admin" &&
-            user.toLowerCase() !== "guru"
-          )
-            this.setSession("student", user);
-          else alert("Password Salah!");
-        }
+            // --- LOGIN ---
+            processLogin() {
+                const user = document.getElementById('login-user').value.trim();
+                const pass = document.getElementById('login-pass').value.trim();
+                
+                if (user.toLowerCase() === 'admin' && pass === 'admin') this.setSession('admin', user);
+                else if (user.toLowerCase() === 'guru' && pass === '1234') this.setSession('teacher', user);
+                else if (user.toLowerCase() !== 'admin' && user.toLowerCase() !== 'guru') this.setSession('student', user);
+                else alert("Password Salah!");
+            }
 
-        setSession(role, name) {
-          this.currentUserRole = role;
-          document.getElementById("login-screen").style.display = "none";
-          document.getElementById("main-app").classList.remove("hidden");
+            setSession(role, name) {
+                this.currentUserRole = role;
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-app').classList.remove('hidden');
+                
+                const badge = document.getElementById('user-badge');
+                const adminControls = document.getElementById('admin-controls');
+                
+                if (role === 'admin') {
+                    badge.innerText = "Admin"; badge.className = "px-2 bg-red-600 text-white rounded text-xs";
+                    adminControls.classList.remove('hidden');
+                } else {
+                    badge.innerText = role === 'teacher' ? "Guru" : `Siswa (${name})`;
+                    badge.className = "px-2 bg-blue-600 text-white rounded text-xs";
+                    adminControls.classList.add('hidden');
+                }
+                this.filterByDay(this.effectiveDays[0] || 'Senin');
+            }
 
-          const badge = document.getElementById("user-badge");
-          const adminControls = document.getElementById("admin-controls");
+            // --- CRUD ---
+            async addScheduleData(data) {
+                const { collection, addDoc } = window.firebaseModules;
+                try { await addDoc(collection(this.db, 'artifacts', this.appId, 'public', 'data', 'schedules'), data); } 
+                catch(e) { console.error(e); this.showToast("Error saving", "error"); }
+            }
 
-          if (role === "admin") {
-            badge.innerText = "Admin";
-            badge.className = "px-2 bg-red-600 text-white rounded text-xs";
-            adminControls.classList.remove("hidden");
-          } else {
-            badge.innerText = role === "teacher" ? "Guru" : `Siswa (${name})`;
-            badge.className = "px-2 bg-blue-600 text-white rounded text-xs";
-            adminControls.classList.add("hidden");
-          }
-          this.filterByDay(this.effectiveDays[0] || "Senin");
-        }
+            async updateScheduleData(id, data) {
+                const { doc, updateDoc } = window.firebaseModules;
+                try { await updateDoc(doc(this.db, 'artifacts', this.appId, 'public', 'data', 'schedules', id), data); } catch(e) {}
+            }
 
-        // --- CRUD ---
-        async addScheduleData(data) {
-          const { collection, addDoc } = window.firebaseModules;
-          try {
-            await addDoc(
-              collection(
-                this.db,
-                "artifacts",
-                this.appId,
-                "public",
-                "data",
-                "schedules",
-              ),
-              data,
-            );
-          } catch (e) {
-            console.error(e);
-            this.showToast("Error saving", "error");
-          }
-        }
+            async deleteScheduleData(id) {
+                const { doc, deleteDoc } = window.firebaseModules;
+                try { 
+                    await deleteDoc(doc(this.db, 'artifacts', this.appId, 'public', 'data', 'schedules', id));
+                    return true;
+                } catch(e) { 
+                    console.error("Delete failed:", e);
+                    this.showToast("Gagal hapus: " + e.message, "error");
+                    return false;
+                }
+            }
 
-        async updateScheduleData(id, data) {
-          const { doc, updateDoc } = window.firebaseModules;
-          try {
-            await updateDoc(
-              doc(
-                this.db,
-                "artifacts",
-                this.appId,
-                "public",
-                "data",
-                "schedules",
-                id,
-              ),
-              data,
-            );
-          } catch (e) {}
-        }
+            async deleteSchedule(id) {
+                if(confirm('Yakin ingin menghapus jadwal ini?')) {
+                    const success = await this.deleteScheduleData(id.toString());
+                    if (success) this.showToast('Berhasil dihapus.', 'info');
+                }
+            }
 
-        async deleteScheduleData(id) {
-          const { doc, deleteDoc } = window.firebaseModules;
-          try {
-            await deleteDoc(
-              doc(
-                this.db,
-                "artifacts",
-                this.appId,
-                "public",
-                "data",
-                "schedules",
-                id,
-              ),
-            );
-            return true;
-          } catch (e) {
-            console.error("Delete failed:", e);
-            this.showToast("Gagal hapus: " + e.message, "error");
-            return false;
-          }
-        }
+            // --- LOGIC ---
+            saveSchedule() {
+                const className = document.getElementById('input-class-name').value.trim();
+                const day = document.getElementById('input-day').value;
+                const timeStart = document.getElementById('input-time-start').value;
+                const timeEnd = document.getElementById('input-time-end').value;
+                const subject = document.getElementById('input-subject').value.trim();
+                const teacher = document.getElementById('input-teacher').value.trim();
 
-        async deleteSchedule(id) {
-          if (confirm("Yakin ingin menghapus jadwal ini?")) {
-            const success = await this.deleteScheduleData(id.toString());
-            if (success) this.showToast("Berhasil dihapus.", "info");
-          }
-        }
+                if (!className || !day || !timeStart || !timeEnd) return;
+                
+                const conflict = this.checkConflict(className, day, timeStart, timeEnd, this.editingId);
+                if (conflict) {
+                    const [h1, m1] = timeStart.split(':').map(Number);
+                    const [h2, m2] = timeEnd.split(':').map(Number);
+                    const duration = (h2*60 + m2) - (h1*60 + m1);
+                    this.showConflictAlternatives(className, day, duration, conflict);
+                    return;
+                }
 
-        // --- LOGIC ---
-        saveSchedule() {
-          const className = document
-            .getElementById("input-class-name")
-            .value.trim();
-          const day = document.getElementById("input-day").value;
-          const timeStart = document.getElementById("input-time-start").value;
-          const timeEnd = document.getElementById("input-time-end").value;
-          const subject = document.getElementById("input-subject").value.trim();
-          const teacher = document.getElementById("input-teacher").value.trim();
+                const data = { className, day, timeStart, timeEnd, subject, teacher, color: this.getColor(subject) };
+                if (this.editingId) { this.updateScheduleData(this.editingId, data); this.showToast('Diperbarui!'); } 
+                else { this.addScheduleData(data); this.showToast('Ditambahkan!'); }
+                this.closeModal();
+            }
 
-          if (!className || !day || !timeStart || !timeEnd) return;
+            checkConflict(className, day, start, end, ignoreId = null) {
+                return this.schedules.find(s => {
+                    if (ignoreId && s.id === ignoreId) return false;
+                    if (s.className.toLowerCase() !== className.toLowerCase() || s.day !== day) return false;
+                    return (start < s.timeEnd) && (end > s.timeStart);
+                });
+            }
 
-          const conflict = this.checkConflict(
-            className,
-            day,
-            timeStart,
-            timeEnd,
-            this.editingId,
-          );
-          if (conflict) {
-            const [h1, m1] = timeStart.split(":").map(Number);
-            const [h2, m2] = timeEnd.split(":").map(Number);
-            const duration = h2 * 60 + m2 - (h1 * 60 + m1);
-            this.showConflictAlternatives(className, day, duration, conflict);
-            return;
-          }
-
-          const data = {
-            className,
-            day,
-            timeStart,
-            timeEnd,
-            subject,
-            teacher,
-            color: this.getColor(subject),
-          };
-          if (this.editingId) {
-            this.updateScheduleData(this.editingId, data);
-            this.showToast("Diperbarui!");
-          } else {
-            this.addScheduleData(data);
-            this.showToast("Ditambahkan!");
-          }
-          this.closeModal();
-        }
-
-        checkConflict(className, day, start, end, ignoreId = null) {
-          return this.schedules.find((s) => {
-            if (ignoreId && s.id === ignoreId) return false;
-            if (
-              s.className.toLowerCase() !== className.toLowerCase() ||
-              s.day !== day
-            )
-              return false;
-            return start < s.timeEnd && end > s.timeStart;
-          });
-        }
-
-        showConflictAlternatives(className, day, duration, conflict) {
-          const modal = document.getElementById("modal-conflict");
-          const container = document.getElementById("conflict-alternatives");
-          modal.classList.remove("opacity-0", "pointer-events-none");
-          modal.querySelector(".modal-container").classList.add("scale-100");
-
-          const slots = this.scanSlots([day], duration, className, 3);
-
-          if (slots.length === 0) {
-            container.innerHTML = `<div class="text-sm text-red-500">Tidak ada slot kosong lain pada hari ${day}. Coba hari lain.</div>`;
-          } else {
-            container.innerHTML = slots
-              .map(
-                (s) => `
+            showConflictAlternatives(className, day, duration, conflict) {
+                const modal = document.getElementById('modal-conflict');
+                const container = document.getElementById('conflict-alternatives');
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                modal.querySelector('.modal-container').classList.add('scale-100');
+                
+                const slots = this.scanSlots([day], duration, className, 3);
+                
+                if (slots.length === 0) {
+                    container.innerHTML = `<div class="text-sm text-red-500">Tidak ada slot kosong lain pada hari ${day}. Coba hari lain.</div>`;
+                } else {
+                    container.innerHTML = slots.map(s => `
                         <div class="flex justify-between items-center bg-white border p-2 rounded cursor-pointer hover:bg-green-50" 
                              onclick="app.applyAlternative('${s.timeStart}', '${s.timeEnd}')">
                             <span class="text-sm font-bold text-gray-700">${s.day}</span>
                             <span class="text-sm text-green-600 font-mono">${s.timeStart} - ${s.timeEnd}</span>
                             <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Pilih</span>
                         </div>
-                    `,
-              )
-              .join("");
-          }
-        }
-
-        applyAlternative(start, end) {
-          document.getElementById("input-time-start").value = start;
-          document.getElementById("input-time-end").value = end;
-          document
-            .getElementById("modal-conflict")
-            .classList.add("opacity-0", "pointer-events-none");
-          this.saveSchedule();
-        }
-
-        generateDummyData() {
-          const classes = ["X-A", "X-B", "XI-IPA", "XI-IPS", "XII-IPA"];
-          const mapels = [
-            "Matematika",
-            "Fisika",
-            "Kimia",
-            "Biologi",
-            "Sejarah",
-            "B. Indo",
-            "B. Inggris",
-          ];
-          const gurus = [
-            "Pak Budi",
-            "Bu Siti",
-            "Pak Agus",
-            "Bu Rina",
-            "Pak Joko",
-          ];
-          const days = this.effectiveDays;
-
-          let count = 0;
-          for (let i = 0; i < 5; i++) {
-            const c = classes[Math.floor(Math.random() * classes.length)];
-            const d = days[Math.floor(Math.random() * days.length)];
-            const startH = 7 + Math.floor(Math.random() * 5);
-            const start = `${startH.toString().padStart(2, "0")}:00`;
-            const end = `${(startH + 1).toString().padStart(2, "0")}:30`;
-
-            if (!this.checkConflict(c, d, start, end)) {
-              this.addScheduleData({
-                className: c,
-                day: d,
-                timeStart: start,
-                timeEnd: end,
-                subject: mapels[Math.floor(Math.random() * mapels.length)],
-                teacher: gurus[Math.floor(Math.random() * gurus.length)],
-                color: this.getColor("dummy"),
-              });
-              count++;
+                    `).join('');
+                }
             }
-          }
-          this.showToast(`${count} Data Dummy ditambahkan!`);
-        }
 
-        printSchedule() {
-          window.print();
-        }
+            applyAlternative(start, end) {
+                document.getElementById('input-time-start').value = start;
+                document.getElementById('input-time-end').value = end;
+                document.getElementById('modal-conflict').classList.add('opacity-0', 'pointer-events-none');
+                this.saveSchedule();
+            }
 
-        // --- RENDER & VIEW ---
-        render() {
-          // Render Tabs based on Effective Days
-          document.getElementById("day-tabs").innerHTML =
-            this.effectiveDays
-              .map(
-                (d) => `
-                    <button onclick="app.filterByDay('${d}')" class="px-4 py-2 rounded text-sm font-medium transition ${this.currentFilter === d ? "bg-indigo-100 text-indigo-700" : "text-gray-600 hover:bg-gray-50"}">${d}</button>
-                `,
-              )
-              .join("") +
-            `<button onclick="app.filterByDay('all')" class="px-4 py-2 rounded text-sm ${this.currentFilter === "all" ? "bg-indigo-100 text-indigo-700" : "text-gray-600"}">Semua</button>`;
+            generateDummyData() {
+                const classes = ['X-A', 'X-B', 'XI-IPA', 'XI-IPS', 'XII-IPA'];
+                const mapels = ['Matematika', 'Fisika', 'Kimia', 'Biologi', 'Sejarah', 'B. Indo', 'B. Inggris'];
+                const gurus = ['Pak Budi', 'Bu Siti', 'Pak Agus', 'Bu Rina', 'Pak Joko'];
+                const days = this.effectiveDays;
+                
+                let count = 0;
+                for(let i=0; i<5; i++) {
+                    const c = classes[Math.floor(Math.random()*classes.length)];
+                    const d = days[Math.floor(Math.random()*days.length)];
+                    const startH = 7 + Math.floor(Math.random() * 5);
+                    const start = `${startH.toString().padStart(2,'0')}:00`;
+                    const end = `${(startH+1).toString().padStart(2,'0')}:30`;
+                    
+                    if(!this.checkConflict(c, d, start, end)) {
+                        this.addScheduleData({
+                            className: c, day: d, timeStart: start, timeEnd: end,
+                            subject: mapels[Math.floor(Math.random()*mapels.length)],
+                            teacher: gurus[Math.floor(Math.random()*gurus.length)],
+                            color: this.getColor('dummy')
+                        });
+                        count++;
+                    }
+                }
+                this.showToast(`${count} Data Dummy ditambahkan!`);
+            }
 
-          const classes = [
-            ...new Set(this.schedules.map((s) => s.className)),
-          ].sort();
-          document.getElementById("class-filter").innerHTML =
-            `<option value="all">Semua Kelas</option>` +
-            classes.map((c) => `<option value="${c}">${c}</option>`).join("");
-          document.getElementById("class-filter").value =
-            this.currentClassFilter;
-          document.getElementById("existing-classes").innerHTML = classes
-            .map((c) => `<option value="${c}">`)
-            .join("");
+            printSchedule() { window.print(); }
 
-          let data = this.schedules.filter((s) => {
-            const matchDay =
-              this.currentFilter === "all" || s.day === this.currentFilter;
-            const matchClass =
-              this.currentClassFilter === "all" ||
-              s.className === this.currentClassFilter;
-            const matchSearch = (s.subject + s.teacher + s.className)
-              .toLowerCase()
-              .includes(this.searchQuery.toLowerCase());
-            return matchDay && matchClass && matchSearch;
-          });
+            // --- RENDER & VIEW ---
+            render() {
+                // Render Tabs based on Effective Days
+                document.getElementById('day-tabs').innerHTML = this.effectiveDays.map(d => `
+                    <button onclick="app.filterByDay('${d}')" class="px-4 py-2 rounded text-sm font-medium transition ${this.currentFilter===d ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}">${d}</button>
+                `).join('') + `<button onclick="app.filterByDay('all')" class="px-4 py-2 rounded text-sm ${this.currentFilter==='all'?'bg-indigo-100 text-indigo-700':'text-gray-600'}">Semua</button>`;
 
-          const container = document.getElementById("schedule-container");
-          container.innerHTML = "";
-          if (data.length === 0) {
-            document.getElementById("empty-state").classList.remove("hidden");
-          } else {
-            document.getElementById("empty-state").classList.add("hidden");
-            data.forEach((item) => {
-              const adminBtns =
-                this.currentUserRole === "admin"
-                  ? `
+                const classes = [...new Set(this.schedules.map(s => s.className))].sort();
+                document.getElementById('class-filter').innerHTML = `<option value="all">Semua Kelas</option>` + classes.map(c => `<option value="${c}">${c}</option>`).join('');
+                document.getElementById('class-filter').value = this.currentClassFilter;
+                document.getElementById('existing-classes').innerHTML = classes.map(c => `<option value="${c}">`).join('');
+
+                let data = this.schedules.filter(s => {
+                    const matchDay = this.currentFilter === 'all' || s.day === this.currentFilter;
+                    const matchClass = this.currentClassFilter === 'all' || s.className === this.currentClassFilter;
+                    const matchSearch = (s.subject+s.teacher+s.className).toLowerCase().includes(this.searchQuery.toLowerCase());
+                    return matchDay && matchClass && matchSearch;
+                });
+
+                const container = document.getElementById('schedule-container');
+                container.innerHTML = '';
+                if (data.length === 0) {
+                    document.getElementById('empty-state').classList.remove('hidden');
+                } else {
+                    document.getElementById('empty-state').classList.add('hidden');
+                    data.forEach(item => {
+                        const adminBtns = this.currentUserRole === 'admin' ? `
                             <div class="flex gap-2">
                                 <button onclick="app.editSchedule('${item.id}')" class="text-blue-500"><i class="fas fa-edit"></i></button>
                                 <button onclick="app.deleteSchedule('${item.id}')" class="text-red-500"><i class="fas fa-trash"></i></button>
-                            </div>`
-                  : "";
-              container.innerHTML += `
+                            </div>` : '';
+                        container.innerHTML += `
                             <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border-l-4" style="border-left-color:${item.color}">
                                 <div class="flex justify-between items-start mb-2">
                                     <span class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">${item.day} - ${item.className}</span>
@@ -1176,296 +601,191 @@
                                 <div class="text-sm font-mono text-indigo-600 dark:text-indigo-400"><i class="far fa-clock mr-1"></i> ${item.timeStart} - ${item.timeEnd}</div>
                             </div>
                         `;
-            });
-          }
-          this.renderPrintTable(data);
-        }
-
-        renderPrintTable(data) {
-          const days = this.effectiveDays;
-          const container = document.getElementById("print-table-container");
-          const classesToPrint =
-            this.currentClassFilter === "all"
-              ? [...new Set(data.map((s) => s.className))]
-              : [this.currentClassFilter];
-
-          let html = "";
-          classesToPrint.forEach((cls) => {
-            const classData = data.filter((s) => s.className === cls);
-            if (classData.length === 0) return;
-            html += `<h2 class="text-lg font-bold mt-4 mb-2 border-b border-black">Jadwal Kelas: ${cls}</h2>`;
-            html += `<table class="print-table"><thead><tr>`;
-            days.forEach((d) => (html += `<th>${d}</th>`));
-            html += `</tr></thead><tbody><tr>`;
-            days.forEach((d) => {
-              html += `<td>`;
-              const dayItems = classData
-                .filter((s) => s.day === d)
-                .sort((a, b) => a.timeStart.localeCompare(b.timeStart));
-              dayItems.forEach((item) => {
-                html += `<div class="print-item"><b>${item.timeStart}-${item.timeEnd}</b><br/>${item.subject}<br/><i>${item.teacher}</i></div>`;
-              });
-              html += `</td>`;
-            });
-            html += `</tr></tbody></table>`;
-          });
-          container.innerHTML = html;
-          document.getElementById("print-filter-info").innerText =
-            `Filter: ${this.currentClassFilter}, Dicetak: ${new Date().toLocaleDateString()}`;
-        }
-
-        // --- HELPERS ---
-        scanSlots(targetDays, duration, className, limit = 5) {
-          const results = [];
-          targetDays.forEach((day) => {
-            for (let h = 7; h < 15; h++) {
-              for (let m = 0; m < 60; m += 30) {
-                const startMins = h * 60 + m;
-                const endMins = startMins + duration;
-                const hEnd = Math.floor(endMins / 60);
-                const mEnd = endMins % 60;
-                if (hEnd >= 16) continue;
-                const startStr = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-                const endStr = `${hEnd.toString().padStart(2, "0")}:${mEnd.toString().padStart(2, "0")}`;
-                if (!this.checkConflict(className, day, startStr, endStr)) {
-                  results.push({ day, timeStart: startStr, timeEnd: endStr });
-                  if (results.length >= limit) return results;
+                    });
                 }
-              }
+                this.renderPrintTable(data);
             }
-          });
-          return results;
-        }
 
-        findAvailableSlots() {
-          const cls = document.getElementById("auto-class").value;
-          const sub = document.getElementById("auto-subject").value;
-          const dur = parseInt(document.getElementById("auto-duration").value);
-          const tea = document.getElementById("auto-teacher").value;
-          const dayFilter = document.getElementById("auto-day").value; // Get selected day
+            renderPrintTable(data) {
+                const days = this.effectiveDays;
+                const container = document.getElementById('print-table-container');
+                const classesToPrint = this.currentClassFilter === 'all' ? [...new Set(data.map(s => s.className))] : [this.currentClassFilter];
+                
+                let html = '';
+                classesToPrint.forEach(cls => {
+                    const classData = data.filter(s => s.className === cls);
+                    if (classData.length === 0) return;
+                    html += `<h2 class="text-lg font-bold mt-4 mb-2 border-b border-black">Jadwal Kelas: ${cls}</h2>`;
+                    html += `<table class="print-table"><thead><tr>`;
+                    days.forEach(d => html += `<th>${d}</th>`);
+                    html += `</tr></thead><tbody><tr>`;
+                    days.forEach(d => {
+                        html += `<td>`;
+                        const dayItems = classData.filter(s => s.day === d).sort((a,b) => a.timeStart.localeCompare(b.timeStart));
+                        dayItems.forEach(item => {
+                            html += `<div class="print-item"><b>${item.timeStart}-${item.timeEnd}</b><br/>${item.subject}<br/><i>${item.teacher}</i></div>`;
+                        });
+                        html += `</td>`;
+                    });
+                    html += `</tr></tbody></table>`;
+                });
+                container.innerHTML = html;
+                document.getElementById('print-filter-info').innerText = `Filter: ${this.currentClassFilter}, Dicetak: ${new Date().toLocaleDateString()}`;
+            }
 
-          if (!cls || !dur) return alert("Isi Kelas & Durasi!");
+            // --- HELPERS ---
+            scanSlots(targetDays, duration, className, limit = 5) {
+                const results = [];
+                targetDays.forEach(day => {
+                    for(let h=7; h<15; h++) {
+                        for(let m=0; m<60; m+=30) {
+                            const startMins = h*60 + m;
+                            const endMins = startMins + duration;
+                            const hEnd = Math.floor(endMins/60);
+                            const mEnd = endMins%60;
+                            if (hEnd >= 16) continue; 
+                            const startStr = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+                            const endStr = `${hEnd.toString().padStart(2,'0')}:${mEnd.toString().padStart(2,'0')}`;
+                            if (!this.checkConflict(className, day, startStr, endStr)) {
+                                results.push({ day, timeStart: startStr, timeEnd: endStr });
+                                if (results.length >= limit) return results;
+                            }
+                        }
+                    }
+                });
+                return results;
+            }
 
-          // If filter specific day use it, else use all effective days
-          const targetDays = dayFilter ? [dayFilter] : this.effectiveDays;
+            findAvailableSlots() {
+                const cls = document.getElementById('auto-class').value;
+                const sub = document.getElementById('auto-subject').value;
+                const dur = parseInt(document.getElementById('auto-duration').value);
+                const tea = document.getElementById('auto-teacher').value;
+                const dayFilter = document.getElementById('auto-day').value; // Get selected day
 
-          const slots = this.scanSlots(targetDays, dur, cls, 10);
-          const resDiv = document.getElementById("auto-results");
-
-          resDiv.classList.remove("hidden");
-          if (slots.length === 0) resDiv.innerHTML = "Tidak ada slot kosong.";
-          else {
-            resDiv.innerHTML = slots
-              .map(
-                (s) => `
+                if (!cls || !dur) return alert("Isi Kelas & Durasi!");
+                
+                // If filter specific day use it, else use all effective days
+                const targetDays = dayFilter ? [dayFilter] : this.effectiveDays;
+                
+                const slots = this.scanSlots(targetDays, dur, cls, 10);
+                const resDiv = document.getElementById('auto-results');
+                
+                resDiv.classList.remove('hidden');
+                if (slots.length === 0) resDiv.innerHTML = "Tidak ada slot kosong.";
+                else {
+                    resDiv.innerHTML = slots.map(s => `
                         <div class="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded border cursor-pointer hover:bg-green-100" 
                              onclick="app.confirmAutoSlot('${s.day}', '${s.timeStart}', '${s.timeEnd}', '${cls}', '${sub}', '${tea}')">
                             <span>${s.day} ${s.timeStart}-${s.timeEnd}</span>
                             <span class="text-xs bg-green-500 text-white px-2 py-1 rounded">Pilih</span>
                         </div>
-                    `,
-              )
-              .join("");
-          }
-        }
+                    `).join('');
+                }
+            }
 
-        confirmAutoSlot(day, start, end, cls, sub, tea) {
-          this.addScheduleData({
-            className: cls,
-            day,
-            timeStart: start,
-            timeEnd: end,
-            subject: sub,
-            teacher: tea,
-            color: this.getColor(sub),
-          });
-          this.closeAutoGenerateModal();
-          this.showToast("Jadwal Otomatis Disimpan!");
-        }
+            confirmAutoSlot(day, start, end, cls, sub, tea) {
+                this.addScheduleData({
+                    className: cls, day, timeStart: start, timeEnd: end, subject: sub, teacher: tea, color: this.getColor(sub)
+                });
+                this.closeAutoGenerateModal();
+                this.showToast("Jadwal Otomatis Disimpan!");
+            }
 
-        // Utils
-        sortSchedules() {
-          const days = {
-            Senin: 1,
-            Selasa: 2,
-            Rabu: 3,
-            Kamis: 4,
-            Jumat: 5,
-            Sabtu: 6,
-            Minggu: 7,
-          };
-          this.schedules.sort(
-            (a, b) =>
-              days[a.day] - days[b.day] ||
-              a.timeStart.localeCompare(b.timeStart),
-          );
-        }
-        filterByDay(d) {
-          this.currentFilter = d;
-          this.render();
-        }
-        filterByClass(c) {
-          this.currentClassFilter = c;
-          this.render();
-        }
-        handleSearch(q) {
-          this.searchQuery = q;
-          this.render();
-        }
+            // Utils
+            sortSchedules() {
+                const days = { "Senin":1, "Selasa":2, "Rabu":3, "Kamis":4, "Jumat":5, "Sabtu":6, "Minggu":7 };
+                this.schedules.sort((a,b) => (days[a.day]-days[b.day]) || a.timeStart.localeCompare(b.timeStart));
+            }
+            filterByDay(d) { this.currentFilter = d; this.render(); }
+            filterByClass(c) { this.currentClassFilter = c; this.render(); }
+            handleSearch(q) { this.searchQuery = q; this.render(); }
+            
+            // Modal Openers that need to be aware of Effective Days
+            openModal() { 
+                const m = document.getElementById('modal-form');
+                m.classList.remove('opacity-0', 'pointer-events-none'); 
+                m.querySelector('.modal-container').classList.add('scale-100'); 
+                document.getElementById('scheduleForm').reset(); 
+                this.editingId = null;
+                
+                // Populate Day Dropdown based on Effective Days
+                const daySelect = document.getElementById('input-day');
+                daySelect.innerHTML = this.effectiveDays.map(d => `<option value="${d}">${d}</option>`).join('');
+            }
 
-        // Modal Openers that need to be aware of Effective Days
-        openModal() {
-          const m = document.getElementById("modal-form");
-          m.classList.remove("opacity-0", "pointer-events-none");
-          m.querySelector(".modal-container").classList.add("scale-100");
-          document.getElementById("scheduleForm").reset();
-          this.editingId = null;
+            openAutoGenerateModal() {
+                const m = document.getElementById('modal-auto-generate');
+                m.classList.remove('opacity-0', 'pointer-events-none');
+                
+                // Populate Day Filter
+                const autoDaySelect = document.getElementById('auto-day');
+                autoDaySelect.innerHTML = `<option value="">Semua Hari Efektif</option>` + 
+                                          this.effectiveDays.map(d => `<option value="${d}">${d}</option>`).join('');
+            }
 
-          // Populate Day Dropdown based on Effective Days
-          const daySelect = document.getElementById("input-day");
-          daySelect.innerHTML = this.effectiveDays
-            .map((d) => `<option value="${d}">${d}</option>`)
-            .join("");
-        }
-
-        openAutoGenerateModal() {
-          const m = document.getElementById("modal-auto-generate");
-          m.classList.remove("opacity-0", "pointer-events-none");
-
-          // Populate Day Filter
-          const autoDaySelect = document.getElementById("auto-day");
-          autoDaySelect.innerHTML =
-            `<option value="">Semua Hari Efektif</option>` +
-            this.effectiveDays
-              .map((d) => `<option value="${d}">${d}</option>`)
-              .join("");
-        }
-
-        openSettingsModal() {
-          const m = document.getElementById("modal-settings");
-          m.classList.remove("opacity-0", "pointer-events-none");
-          m.querySelector(".modal-container").classList.add("scale-100");
-
-          // Render Checkboxes
-          const container = document.getElementById("settings-days-container");
-          container.innerHTML = this.allDays
-            .map((d) => {
-              const isChecked = this.effectiveDays.includes(d) ? "checked" : "";
-              return `
+            openSettingsModal() {
+                const m = document.getElementById('modal-settings');
+                m.classList.remove('opacity-0', 'pointer-events-none');
+                m.querySelector('.modal-container').classList.add('scale-100');
+                
+                // Render Checkboxes
+                const container = document.getElementById('settings-days-container');
+                container.innerHTML = this.allDays.map(d => {
+                    const isChecked = this.effectiveDays.includes(d) ? 'checked' : '';
+                    return `
                         <label class="flex items-center space-x-2 cursor-pointer">
                             <input type="checkbox" name="effective-day" value="${d}" ${isChecked} class="form-checkbox h-4 w-4 text-blue-600 rounded">
                             <span class="text-gray-700 dark:text-gray-300">${d}</span>
                         </label>
                     `;
-            })
-            .join("");
+                }).join('');
+            }
+
+            closeModal() { document.getElementById('modal-form').classList.add('opacity-0', 'pointer-events-none'); document.getElementById('modal-form').querySelector('.modal-container').classList.remove('scale-100'); }
+            closeAutoGenerateModal() { document.getElementById('modal-auto-generate').classList.add('opacity-0', 'pointer-events-none'); }
+            closeSettingsModal() { document.getElementById('modal-settings').classList.add('opacity-0', 'pointer-events-none'); document.getElementById('modal-settings').querySelector('.modal-container').classList.remove('scale-100'); }
+            
+            editSchedule(id) {
+                const s = this.schedules.find(x => x.id === id);
+                if (!s) return;
+                // Ensure day dropdown has the option even if settings changed
+                const daySelect = document.getElementById('input-day');
+                daySelect.innerHTML = this.allDays.map(d => `<option value="${d}">${d}</option>`).join('');
+                
+                document.getElementById('input-class-name').value = s.className;
+                document.getElementById('input-day').value = s.day;
+                document.getElementById('input-time-start').value = s.timeStart;
+                document.getElementById('input-time-end').value = s.timeEnd;
+                document.getElementById('input-subject').value = s.subject;
+                document.getElementById('input-teacher').value = s.teacher;
+                this.editingId = id;
+                document.getElementById('modal-form').classList.remove('opacity-0', 'pointer-events-none');
+                document.getElementById('modal-form').querySelector('.modal-container').classList.add('scale-100');
+            }
+
+            logout() { location.reload(); }
+            toggleDarkMode() { this.isDarkMode = !this.isDarkMode; localStorage.setItem('darkMode', this.isDarkMode); this.applyDarkMode(); }
+            applyDarkMode() { document.querySelector('html').classList.toggle('dark', this.isDarkMode); }
+            getColor(s) { let h=0; for(let i=0;i<s.length;i++)h=s.charCodeAt(i)+((h<<5)-h); return '#'+'00000'.substring(0,6-(h&0xFFFFFF).toString(16).length)+(h&0xFFFFFF).toString(16); }
+            showToast(msg, type='success') {
+                const t = document.getElementById('toast');
+                document.getElementById('toast-message').innerText = msg;
+                document.getElementById('toast-icon').className = type==='error'?'fas fa-exclamation-circle text-red-500':'fas fa-check-circle text-green-500';
+                t.classList.remove('translate-y-32'); setTimeout(()=>t.classList.add('translate-y-32'), 3000);
+            }
+            updateStats() {
+                document.getElementById('total-classes').innerText = this.schedules.length;
+                if (this.schedules.length > 0) {
+                   const c = {}; this.schedules.forEach(s => c[s.day] = (c[s.day]||0)+1);
+                   document.getElementById('busiest-day').innerText = Object.keys(c).reduce((a,b)=>c[a]>c[b]?a:b);
+                }
+            }
+            startClock() { setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString('id-ID'), 1000); }
         }
 
-        closeModal() {
-          document
-            .getElementById("modal-form")
-            .classList.add("opacity-0", "pointer-events-none");
-          document
-            .getElementById("modal-form")
-            .querySelector(".modal-container")
-            .classList.remove("scale-100");
-        }
-        closeAutoGenerateModal() {
-          document
-            .getElementById("modal-auto-generate")
-            .classList.add("opacity-0", "pointer-events-none");
-        }
-        closeSettingsModal() {
-          document
-            .getElementById("modal-settings")
-            .classList.add("opacity-0", "pointer-events-none");
-          document
-            .getElementById("modal-settings")
-            .querySelector(".modal-container")
-            .classList.remove("scale-100");
-        }
-
-        editSchedule(id) {
-          const s = this.schedules.find((x) => x.id === id);
-          if (!s) return;
-          // Ensure day dropdown has the option even if settings changed
-          const daySelect = document.getElementById("input-day");
-          daySelect.innerHTML = this.allDays
-            .map((d) => `<option value="${d}">${d}</option>`)
-            .join("");
-
-          document.getElementById("input-class-name").value = s.className;
-          document.getElementById("input-day").value = s.day;
-          document.getElementById("input-time-start").value = s.timeStart;
-          document.getElementById("input-time-end").value = s.timeEnd;
-          document.getElementById("input-subject").value = s.subject;
-          document.getElementById("input-teacher").value = s.teacher;
-          this.editingId = id;
-          document
-            .getElementById("modal-form")
-            .classList.remove("opacity-0", "pointer-events-none");
-          document
-            .getElementById("modal-form")
-            .querySelector(".modal-container")
-            .classList.add("scale-100");
-        }
-
-        logout() {
-          location.reload();
-        }
-        toggleDarkMode() {
-          this.isDarkMode = !this.isDarkMode;
-          localStorage.setItem("darkMode", this.isDarkMode);
-          this.applyDarkMode();
-        }
-        applyDarkMode() {
-          document
-            .querySelector("html")
-            .classList.toggle("dark", this.isDarkMode);
-        }
-        getColor(s) {
-          let h = 0;
-          for (let i = 0; i < s.length; i++)
-            h = s.charCodeAt(i) + ((h << 5) - h);
-          return (
-            "#" +
-            "00000".substring(0, 6 - (h & 0xffffff).toString(16).length) +
-            (h & 0xffffff).toString(16)
-          );
-        }
-        showToast(msg, type = "success") {
-          const t = document.getElementById("toast");
-          document.getElementById("toast-message").innerText = msg;
-          document.getElementById("toast-icon").className =
-            type === "error"
-              ? "fas fa-exclamation-circle text-red-500"
-              : "fas fa-check-circle text-green-500";
-          t.classList.remove("translate-y-32");
-          setTimeout(() => t.classList.add("translate-y-32"), 3000);
-        }
-        updateStats() {
-          document.getElementById("total-classes").innerText =
-            this.schedules.length;
-          if (this.schedules.length > 0) {
-            const c = {};
-            this.schedules.forEach((s) => (c[s.day] = (c[s.day] || 0) + 1));
-            document.getElementById("busiest-day").innerText = Object.keys(
-              c,
-            ).reduce((a, b) => (c[a] > c[b] ? a : b));
-          }
-        }
-        startClock() {
-          setInterval(
-            () =>
-              (document.getElementById("clock").innerText =
-                new Date().toLocaleTimeString("id-ID")),
-            1000,
-          );
-        }
-      }
-
-      const app = new ScheduleApp();
-      document.addEventListener("DOMContentLoaded", () => app.init());
+        const app = new ScheduleApp();
+        document.addEventListener('DOMContentLoaded', () => app.init());
     </script>
-  </body>
+</body>
 </html>
